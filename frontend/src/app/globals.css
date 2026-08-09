@@ -1,26 +1,128 @@
 @import "tailwindcss";
 
+/*
+ * EasyMusic — dark music-player theme tokens.
+ * The app is a dark-themed desktop player; we force dark colors regardless
+ * of the OS preference so the Tauri window is always consistent.
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+
+  /* surfaces */
+  --bg: #09090b; /* zinc-950 — app background */
+  --bg-elevated: #131316; /* cards / header */
+  --bg-hover: #1f1f23; /* row hover */
+  --bg-active: #27272a; /* zinc-800 — selected row */
+  --border: #27272a; /* zinc-800 */
+  --border-strong: #3f3f46; /* zinc-700 */
+
+  /* text */
+  --text: #fafafa; /* zinc-50 */
+  --text-secondary: #a1a1aa; /* zinc-400 */
+  --text-muted: #71717a; /* zinc-500 */
+
+  /* accent — emerald (music-player feel, distinct from generic indigo) */
+  --accent: #10b981; /* emerald-500 */
+  --accent-hover: #059669; /* emerald-600 */
+  --accent-subtle: rgba(16, 185, 129, 0.12);
+
+  /* functional */
+  --danger: #ef4444;
+
+  /* layout */
+  --sidebar-w: 240px;
+  --nowplaying-h: 88px;
+  --header-h: 56px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-active: var(--bg-active);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-danger: var(--danger);
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Custom scrollbar — slim, themed. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Range input reset — we draw our own track via Slider component. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--text);
+  border: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+input[type="range"]:hover::-webkit-slider-thumb {
+  opacity: 1;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--text);
+  border: none;
+  opacity: 0;
+}
+input[type="range"]:hover::-moz-range-thumb {
+  opacity: 1;
+}
+
+/* Marquee animation for long titles in the Now Playing bar (paused by default) */
+@keyframes marquee {
+  0%,
+  10% {
+    transform: translateX(0);
+  }
+  90%,
+  100% {
+    transform: translateX(calc(-100% + 200px));
+  }
 }

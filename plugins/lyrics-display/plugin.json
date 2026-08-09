@@ -1,0 +1,12 @@
+{
+  "id": "com.easymusic.example.lyrics",
+  "name": "Lyrics Display",
+  "version": "1.0.0",
+  "author": "EasyMusic Team",
+  "description": "Displays lyrics for the currently playing track. A demonstration of the EasyMusic plugin system.",
+  "engine": "js",
+  "entry": "index.js",
+  "permissions": ["library:read", "ui:panel"],
+  "hooks": ["onTrackChanged", "customUIPanel"],
+  "min_app_version": "0.1.0"
+}
