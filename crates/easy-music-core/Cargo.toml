@@ -1,0 +1,10 @@
+[package]
+name = "easy-music-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared core logic for EasyMusic: library management and playback engine."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"

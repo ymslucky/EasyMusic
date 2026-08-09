@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+
+# Rust / Cargo
+target/
+**/*.rs.bk
+src-tauri/gen/schemas/
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env / local config
+.env
+.env*.local
+.DS_Store
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
