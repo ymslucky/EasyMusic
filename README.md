@@ -1,77 +1,219 @@
-# EasyMusic 🎵
+<div align="center">
 
-Cross-platform desktop music application.
+# 🎵 EasyMusic
+
+### Cross-platform desktop music player built with Tauri, Next.js, and Rust
 
 [![CI](https://github.com/easymusic/easymusic/actions/workflows/ci.yml/badge.svg)](https://github.com/easymusic/easymusic/actions/workflows/ci.yml)
 [![Release](https://github.com/easymusic/easymusic/actions/workflows/release.yml/badge.svg)](https://github.com/easymusic/easymusic/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Tauri](https://img.shields.io/badge/Tauri-v2-orange.svg)](https://v2.tauri.app/)
+[![Rust](https://img.shields.io/badge/Rust-stable-dea584.svg)](https://www.rust-lang.org/)
 
-**Stack:** [Tauri v2](https://v2.tauri.app/) · [Next.js](https://nextjs.org/) (static export / SSG) · [Rust](https://www.rust-lang.org/)
+A fast, lightweight, extensible music player for Windows, macOS, and Linux.
+Scan your local music library, browse by track/album/artist, create playlists,
+manage playback with a full transport engine — and extend everything with
+JavaScript plugins.
 
-## Repository layout
+</div>
+
+---
+
+## ✨ Features
+
+- **Cross-platform** — Native desktop apps for Windows, macOS, and Linux from
+  a single codebase (no Electron).
+- **Library management** — Recursive directory scanner with automatic metadata
+  extraction (ID3, Vorbis, FLAC, MP4 tags) backed by a fast SQLite database.
+- **Rich browsing** — Browse tracks, albums, and artists. Full-text search
+  across title, artist, album, and genre. Structured filters (artist, album,
+  genre, duration range).
+- **Playlists** — Full CRUD: create, rename, delete, add/remove tracks,
+  reorder via drag-and-drop.
+- **Playback engine** — Transport state machine with queue management,
+  shuffle, repeat (off/all/one), seek, and volume control. Pluggable
+  `AudioSink` trait for swappable audio backends.
+- **Plugin system** — Extend the app with JavaScript plugins. Custom UI
+  panels, track-change reactions, lyrics fetchers, audio visualizers,
+  equalizers — all with a permission-based security model.
+- **Virtualized UI** — Handles large libraries (10k+ tracks) smoothly with
+  `@tanstack/react-virtual`.
+- **Beautiful dark interface** — Modern React 19 + Tailwind CSS v4 design.
+
+## Screenshots / UI Mockups
+
+The app features five primary views accessible from a sidebar:
 
 ```
-.
-├── .github/workflows/  # CI + release pipelines
-├── frontend/            # Next.js frontend (static export → out/)
-├── src-tauri/           # Tauri app: window shell + Rust command layer
-│   ├── src/
-│   │   ├── main.rs      # binary entry
-│   │   ├── lib.rs       # Tauri builder + command registration
-│   │   ├── commands.rs  # #[tauri::command] wrappers over the core crate
-│   │   └── plugin_commands.rs
-│   ├── capabilities/    # Tauri v2 permission capabilities
-│   ├── icons/           # App icons (PNG/ICO/ICNS for all platforms)
-│   └── tauri.conf.json  # app config (window, build hooks, bundling)
-├── crates/
-│   ├── easy-music-core/     # Core: library, playback, scanner, plugins
-│   └── easy-music-plugin-sdk/  # Plugin SDK: manifest, permissions, hooks
-└── plugins/             # Example plugins
+┌──────────────────────────────────────────────────────┐
+│  EasyMusic                                    ─ □ ✕  │
+├────────┬─────────────────────────────────────────────┤
+│        │                                             │
+│  🎵    │   Library                                   │
+│  Library│   ┌──────────────────────────────────────┐  │
+│  💿     │   │ ♪  Title        Artist   Album  Time │  │
+│  Albums │   ├──────────────────────────────────────┤  │
+│  🎤     │   │ 1  Track One    Artist A  …     3:42 │  │
+│  Artists│   │ 2  Track Two    Artist B  …     4:15 │  │
+│  ▶ List │   │ 3  Track Three  Artist A  …     2:58 │  │
+│  ⚙ Set  │   │ 4  Track Four   Artist C  …     5:30 │  │
+│        │   │ …                                    │  │
+│        │   └──────────────────────────────────────┘  │
+│        │                                             │
+├────────┴─────────────────────────────────────────────┤
+│  ◀◀  ▶  ▶▶   ━━━━━●━━━━━━━   🔀 🔁    🔊 ━━━●━━━   │
+│  Now Playing: Track One — Artist A         1:23/3:42 │
+└──────────────────────────────────────────────────────┘
 ```
+
+### Views
+
+| View       | Description                                                        |
+|------------|--------------------------------------------------------------------|
+| **Library**| Virtualized track table with sortable columns and live search     |
+| **Albums** | Grid view of albums with cover art and track counts               |
+| **Artists**| Artist list with album and track counts                           |
+| **Playlists**| Create/manage playlists with drag-and-drop reordering           |
+| **Settings**| Configure library paths, manage plugins, app preferences        |
+
+## Tech Stack
+
+| Layer          | Technology                                              |
+|----------------|---------------------------------------------------------|
+| **Desktop**    | [Tauri v2](https://v2.tauri.app/) — Rust + WebView      |
+| **Frontend**   | [Next.js 16](https://nextjs.org/), React 19, TypeScript |
+| **Styling**    | [Tailwind CSS v4](https://tailwindcss.com/)             |
+| **State**      | [Zustand](https://github.com/pmndrs/zustand)            |
+| **Backend**    | [Rust](https://www.rust-lang.org/) workspace            |
+| **Database**   | SQLite via [rusqlite](https://github.com/rusqlite/rusqlite) (bundled) |
+| **Metadata**   | [lofty](https://github.com/Serial-ATA/lofty-rs) (ID3/Vorbis/FLAC/MP4) |
+| **Virtualization** | [@tanstack/react-virtual](https://tanstack.com/virtual) |
+| **Build CI/CD**| GitHub Actions (4-platform release matrix)              |
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) ≥ 18 and npm
 - [Rust](https://rustup.rs/) stable toolchain
-- Linux: `libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev` (see Tauri docs for other platforms)
+- Platform-specific Tauri v2 dependencies:
+  - **Linux (Debian/Ubuntu):**
+    ```bash
+    sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev \
+        libayatana-appindicator3-dev librsvg2-dev
+    ```
+  - **macOS:** `xcode-select --install`
+  - **Windows:** [Microsoft Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) + WebView2 runtime
 
-## Development
+## Quick Start
 
 ```bash
-# 1. Install JS deps (root + frontend)
+# Clone
+git clone https://github.com/easymusic/easymusic.git
+cd easymusic
+
+# Install dependencies
 npm install
 npm --prefix frontend install
 
-# 2. Launch the app (Next dev server + Tauri window)
+# Run in development (hot-reload frontend + Rust)
 npm run tauri:dev
 ```
 
-`npm run tauri:dev` starts `next dev` (port 1420) and opens the Tauri window
-pointing at it. Hot-reloads both the frontend and the Rust command layer.
-Run it from the repository root (the `beforeDevCommand` resolves `frontend/`
-relative to the invocation directory).
+The dev server starts Next.js on `http://localhost:1420` and opens the Tauri
+window automatically.
 
-### Headless / CI (no display server)
+## Build Commands
 
-```bash
-# rootless GTK/WebKit sysroot + Xvfb (see the scaffold notes in the task log)
-source /opt/data/env-tauri.sh
-export DISPLAY=:99
-Xvfb :99 -screen 0 1280x800x24 &
-eval "$(dbus-launch --sh-syntax)"
-export WEBKIT_DISABLE_DMABUF_RENDERER=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 \
-       WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 LIBGL_ALWAYS_SOFTWARE=1
-npm run tauri:dev
-```
+| Command               | Description                                  |
+|-----------------------|----------------------------------------------|
+| `npm install`         | Install root dependencies (Tauri CLI)        |
+| `npm --prefix frontend install` | Install frontend dependencies      |
+| `npm run tauri:dev`   | Launch app in dev mode (hot-reload)          |
+| `npm run tauri:build` | Build production installers for your platform|
+| `npm run dev`         | Frontend-only dev server (no Tauri window)   |
+| `npm run build`       | Frontend-only production build (static export)|
 
-## Building
+### Building Platform Installers
 
 ```bash
 npm run tauri:build
 ```
 
-`next build` produces the static export into `frontend/out/`, which Tauri
-bundles into the platform installers (`.deb`/`.AppImage` on Linux, `.msi`/`.exe`
-on Windows, `.dmg`/`.app` on macOS).
+This produces platform-native installers in `src-tauri/target/release/bundle/`:
+
+| Platform | Output                              |
+|----------|-------------------------------------|
+| Linux    | `.deb`, `.AppImage`                |
+| macOS    | `.dmg`, `.app`                     |
+| Windows  | `.msi`, `.exe` (NSIS installer)    |
+
+## Plugin Development
+
+EasyMusic has a first-class JavaScript plugin system. Create a folder with a
+`plugin.json` manifest and an `index.js` entry point, drop it in `plugins/`,
+and restart the app.
+
+### Quick Plugin Example
+
+```
+plugins/
+└── my-plugin/
+    ├── plugin.json
+    └── index.js
+```
+
+**`plugin.json`:**
+```json
+{
+  "id": "com.example.myplugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "entry": "index.js",
+  "permissions": ["library:read"],
+  "hooks": ["onTrackChanged"]
+}
+```
+
+**`index.js`:**
+```javascript
+export default {
+  onLoad(api) {
+    api.log("Hello from my plugin!");
+  },
+  onTrackChanged(track) {
+    console.log("Now playing:", track.title);
+  },
+};
+```
+
+📖 **Full guide:** [`docs/plugin-development.md`](docs/plugin-development.md)
+📦 **Example plugin:** [`plugins/lyrics-display/`](plugins/lyrics-display/)
+📐 **Architecture decision:** [`docs/adr/0001-plugin-system.md`](docs/adr/0001-plugin-system.md)
+
+## Repository Layout
+
+```
+.
+├── .github/workflows/           # CI + release pipelines
+├── crates/
+│   ├── easy-music-core/         # Core: library, playback, scanner, plugins
+│   └── easy-music-plugin-sdk/   # Plugin SDK: manifest, permissions, hooks
+├── docs/                        # Architecture docs + ADRs
+├── frontend/                    # Next.js 16 frontend (static export)
+├── plugins/                     # Example plugins
+├── scripts/                     # Utility scripts (icon generation, etc.)
+├── src-tauri/                   # Tauri app: window shell + Rust commands
+│   ├── src/
+│   │   ├── commands.rs          # #[tauri::command] wrappers
+│   │   ├── plugin_commands.rs   # Plugin management commands
+│   │   └── lib.rs               # Tauri builder + command registration
+│   ├── capabilities/            # Tauri v2 permissions
+│   ├── icons/                   # App icons (PNG/ICO/ICNS, all platforms)
+│   └── tauri.conf.json          # App config (window, bundling, metadata)
+├── Cargo.toml                   # Rust workspace root
+├── LICENSE                      # MIT License
+└── CONTRIBUTING.md              # Contribution guidelines
+```
 
 ## Continuous Integration & Releases
 
@@ -79,41 +221,86 @@ on Windows, `.dmg`/`.app` on macOS).
 
 Runs on every PR and push to `main`:
 
-- **Rust job**: `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`
-- **Frontend job**: `npm run lint`, `npm run build`
+- **Rust:** `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test --all`
+- **Frontend:** `npm run lint`, `npm run build`
 
 ### Release (`release.yml`)
 
-Triggers on tag pushes (`v*`) and pushes to `main`:
+Triggers on tag pushes (`v*`) and produces installers for four targets:
 
-| Platform | Targets | Bundle formats |
-|---|---|---|
-| Ubuntu | x86_64 | `.deb`, `.AppImage` |
-| macOS (Intel) | x86_64 | `.dmg` |
-| macOS (ARM) | aarch64 | `.dmg` |
-| Windows | x86_64 | `.msi`, `.exe` (NSIS) |
+| Platform         | Target   | Bundle formats      |
+|-----------------|----------|---------------------|
+| Ubuntu           | x86_64   | `.deb`, `.AppImage` |
+| macOS (Intel)    | x86_64   | `.dmg`              |
+| macOS (Apple Silicon) | aarch64 | `.dmg`         |
+| Windows          | x86_64   | `.msi`, `.exe` (NSIS)|
 
-Each build uploads platform artifacts and creates a **draft GitHub Release** with
-downloadable installers when a `v*` tag is pushed.
+Each release creates a **draft GitHub Release** with downloadable installers.
 
-Optional code-signing (configure repo secrets when ready):
-- **macOS**: `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`
-- **Windows**: `TAURI_PRIVATE_KEY`, `TAURI_KEY_PASSWORD`
+### Optional Code-Signing
 
-## Rust workspace
+Configure repository secrets for signed builds:
 
-The Cargo workspace has three members:
+<details>
+<summary>macOS signing</summary>
 
-| Crate | Role |
-|---|---|
-| `src-tauri` | Tauri app: window, `#[tauri::command]`s, plugin registration |
-| `crates/easy-music-core` | Framework-agnostic core: `library` (LibraryManager), `playback` (PlaybackEngine), `plugins` (PluginManager), `scanner` |
-| `crates/easy-music-plugin-sdk` | Plugin SDK: manifest types, permissions, hooks (shared by host + plugin authors) |
+```
+APPLE_CERTIFICATE
+APPLE_CERTIFICATE_PASSWORD
+APPLE_ID
+APPLE_PASSWORD
+APPLE_TEAM_ID
+```
 
-Keep business logic in `easy-music-core`; `src-tauri` stays a thin shell.
+</details>
 
-## Status
+<details>
+<summary>Windows / Tauri signing</summary>
 
-Cross-platform desktop music app with library management, playback engine,
-plugin system, and full CI/CD pipeline. CI passes on all three desktop
-platforms; tagged pushes produce downloadable installers via GitHub Releases.
+```
+TAURI_PRIVATE_KEY
+TAURI_KEY_PASSWORD
+```
+
+</details>
+
+## Documentation
+
+- [Architecture Overview](docs/architecture.md) — System design with Mermaid diagrams
+- [Plugin Development Guide](docs/plugin-development.md) — Complete plugin API reference
+- [ADR-0001: Plugin System](docs/adr/0001-plugin-system.md) — Why we chose JS plugins
+- [Contributing Guide](CONTRIBUTING.md) — How to contribute
+
+## Supported Audio Formats
+
+| Format  | Extension(s)              |
+|---------|---------------------------|
+| MP3     | `.mp3`                    |
+| FLAC    | `.flac`                   |
+| WAV     | `.wav`                    |
+| Ogg     | `.ogg`                    |
+| AAC/M4A | `.m4a`, `.aac`            |
+| Opus    | `.opus`                   |
+| WMA     | `.wma`                    |
+
+## Contributing
+
+Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md)
+for details on the development setup, code style, testing, and pull request
+workflow.
+
+### Quick CI Checklist
+
+Before submitting a PR, make sure these pass locally:
+
+```bash
+cargo fmt --all --check
+cargo clippy --all-targets -D warnings
+cargo test --all
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+## License
+
+[MIT](LICENSE) © 2026 EasyMusic
