@@ -66,10 +66,15 @@ export type RepeatMode = "off" | "all" | "one";
 /** Snapshot of playback status returned by playback_status. Mirrors `PlaybackStatus`. */
 export interface PlaybackStatus {
   state: PlaybackState;
+  /** Id of the currently playing track, or null when stopped. */
   track_id: string | null;
   position_secs: number;
   duration_secs: number;
   volume: number;
+  repeat: RepeatMode;
+  shuffle: boolean;
+  queue_length: number;
+  queue_index: number | null;
 }
 
 /** Aggregate statistics about the entire library. Mirrors `LibraryMetadata`. */

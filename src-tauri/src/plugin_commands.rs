@@ -44,7 +44,12 @@ impl From<&easy_music_core::plugins::RegisteredPlugin> for PluginInfo {
             }
             .to_string(),
             error: p.error.clone(),
-            permissions: p.manifest.permissions.iter().map(|p| p.to_string()).collect(),
+            permissions: p
+                .manifest
+                .permissions
+                .iter()
+                .map(|p| p.to_string())
+                .collect(),
             hooks: p.manifest.hooks.iter().map(|h| h.to_string()).collect(),
         }
     }
@@ -56,7 +61,7 @@ pub fn list_plugins(
     manager: State<'_, std::sync::RwLock<PluginManager>>,
 ) -> Result<Vec<PluginInfo>, String> {
     let mgr = manager.read().map_err(|e| e.to_string())?;
-    Ok(mgr.all().iter().map(PluginInfo::from).collect())
+    Ok(mgr.all().iter().map(|p| PluginInfo::from(*p)).collect())
 }
 
 /// List only enabled plugins (used by the runtime to know what to load).
@@ -65,7 +70,7 @@ pub fn list_enabled_plugins(
     manager: State<'_, std::sync::RwLock<PluginManager>>,
 ) -> Result<Vec<PluginInfo>, String> {
     let mgr = manager.read().map_err(|e| e.to_string())?;
-    Ok(mgr.enabled().iter().map(PluginInfo::from).collect())
+    Ok(mgr.enabled().iter().map(|p| PluginInfo::from(*p)).collect())
 }
 
 /// Get the entry-point source code for a plugin.
@@ -118,9 +123,7 @@ pub fn get_plugin_info(
 
 /// Reload all plugins from the plugins directory.
 #[tauri::command]
-pub fn reload_plugins(
-    manager: State<'_, std::sync::RwLock<PluginManager>>,
-) -> Result<(), String> {
+pub fn reload_plugins(manager: State<'_, std::sync::RwLock<PluginManager>>) -> Result<(), String> {
     let dir = {
         let mgr = manager.read().map_err(|e| e.to_string())?;
         mgr.plugins_dir().to_path_buf()
@@ -133,14 +136,22 @@ pub fn reload_plugins(
 }
 
 /// Install a plugin from a directory path.
+///
+/// Returns the freshly-registered `PluginInfo` so the frontend can append it
+/// to its list without a second round-trip.
 #[tauri::command]
 pub fn install_plugin(
     path: String,
     manager: State<'_, std::sync::RwLock<PluginManager>>,
-) -> Result<String, String> {
+) -> Result<PluginInfo, String> {
     let mut mgr = manager.write().map_err(|e| e.to_string())?;
-    mgr.install_from_path(&PathBuf::from(path))
-        .map_err(|e| e.to_string())
+    let id = mgr
+        .install_from_path(&PathBuf::from(path))
+        .map_err(|e| e.to_string())?;
+    let plugin = mgr
+        .get(&id)
+        .ok_or_else(|| format!("plugin '{id}' installed but not registered"))?;
+    Ok(PluginInfo::from(plugin))
 }
 
 /// Uninstall a plugin by id.

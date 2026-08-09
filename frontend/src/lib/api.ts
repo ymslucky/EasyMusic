@@ -379,6 +379,10 @@ export const api = {
         position_secs: mockPlayback.position,
         duration_secs: track?.duration_secs ?? 0,
         volume: mockPlayback.volume,
+        repeat: mockPlayback.repeat,
+        shuffle: mockPlayback.shuffle,
+        queue_length: mockPlayback.queue.length,
+        queue_index: mockPlayback.queueIndex >= 0 ? mockPlayback.queueIndex : null,
       };
     }
     return invoke<PlaybackStatus>("playback_status");
@@ -539,43 +543,61 @@ export const api = {
     if (idx >= 0) mockLibraryDirs.splice(idx, 1);
   },
 
-  // --- Plugins (mock only — no backend command yet) ----------------------
+  // --- Plugins ----------------------------------------------------------
+  //
+  // Tauri mode talks to the Rust PluginManager commands
+  // (src-tauri/src/plugin_commands.rs); the browser fallback keeps an
+  // in-memory demo list so the UI stays interactive outside the desktop app.
 
   async listPlugins(): Promise<PluginInfo[]> {
-    return mockPlugins.slice();
+    if (!isTauriEnv()) return mockPlugins.slice();
+    return invoke<PluginInfo[]>("list_plugins");
   },
 
   async togglePlugin(id: string, enabled: boolean): Promise<void> {
-    const p = mockPlugins.find((x) => x.id === id);
-    if (p) {
-      p.enabled = enabled;
-      p.status = enabled ? "enabled" : "disabled";
+    if (!isTauriEnv()) {
+      const p = mockPlugins.find((x) => x.id === id);
+      if (p) {
+        p.enabled = enabled;
+        p.status = enabled ? "enabled" : "disabled";
+      }
+      return;
     }
+    return invoke<void>(enabled ? "enable_plugin" : "disable_plugin", { id });
   },
 
-  async installPlugin(_path: string): Promise<PluginInfo> {
-    // Mock: create a placeholder plugin entry.
-    const p: PluginInfo = {
-      id: genId("plugin"),
-      name: _path.split("/").pop() ?? "New Plugin",
-      version: "0.0.1",
-      status: "disabled",
-      enabled: false,
-      description: `Installed from ${_path}`,
-      hooks: [],
-      permissions: [],
-    };
-    mockPlugins.push(p);
-    return p;
+  async installPlugin(path: string): Promise<PluginInfo> {
+    if (!isTauriEnv()) {
+      // Mock: create a placeholder plugin entry.
+      const p: PluginInfo = {
+        id: genId("plugin"),
+        name: path.split("/").pop() ?? "New Plugin",
+        version: "0.0.1",
+        status: "disabled",
+        enabled: false,
+        description: `Installed from ${path}`,
+        hooks: [],
+        permissions: [],
+      };
+      mockPlugins.push(p);
+      return p;
+    }
+    return invoke<PluginInfo>("install_plugin", { path });
   },
 
   async uninstallPlugin(id: string): Promise<void> {
-    const idx = mockPlugins.findIndex((x) => x.id === id);
-    if (idx >= 0) mockPlugins.splice(idx, 1);
+    if (!isTauriEnv()) {
+      const idx = mockPlugins.findIndex((x) => x.id === id);
+      if (idx >= 0) mockPlugins.splice(idx, 1);
+      return;
+    }
+    return invoke<void>("uninstall_plugin", { id });
   },
 
   async reloadPlugins(): Promise<PluginInfo[]> {
-    return mockPlugins.slice();
+    if (!isTauriEnv()) return mockPlugins.slice();
+    await invoke<void>("reload_plugins");
+    return invoke<PluginInfo[]>("list_plugins");
   },
 };
 
@@ -587,6 +609,10 @@ function mockStatus(): PlaybackStatus {
     position_secs: mockPlayback.position,
     duration_secs: track?.duration_secs ?? 0,
     volume: mockPlayback.volume,
+    repeat: mockPlayback.repeat,
+    shuffle: mockPlayback.shuffle,
+    queue_length: mockPlayback.queue.length,
+    queue_index: mockPlayback.queueIndex >= 0 ? mockPlayback.queueIndex : null,
   };
 }
 

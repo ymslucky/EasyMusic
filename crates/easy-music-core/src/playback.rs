@@ -22,7 +22,11 @@ pub enum PlaybackState {
 }
 
 /// Repeat mode for the queue.
+///
+/// Serialized lowercase (`"off"` / `"all"` / `"one"`) to match the frontend
+/// `RepeatMode` union in `frontend/src/lib/types.ts`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum RepeatMode {
     Off,
     All,
@@ -30,10 +34,16 @@ pub enum RepeatMode {
 }
 
 /// Snapshot of the engine state returned to the frontend.
+///
+/// The wire contract matches the frontend `PlaybackStatus` interface in
+/// `frontend/src/lib/types.ts`: the current track is exposed as `track_id`
+/// (the frontend resolves the full `Track` from its id cache).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlaybackStatus {
     pub state: PlaybackState,
-    pub current_track: Option<Track>,
+    /// Id of the currently playing track, if any.
+    #[serde(rename = "track_id")]
+    pub current_track: Option<String>,
     pub position_secs: u32,
     pub duration_secs: u32,
     pub volume: f32,
@@ -173,7 +183,7 @@ impl<S: AudioSink> PlaybackEngine<S> {
     pub fn status(&self) -> PlaybackStatus {
         PlaybackStatus {
             state: self.state,
-            current_track: self.current().cloned(),
+            current_track: self.current().map(|t| t.id.clone()),
             position_secs: self.position_secs,
             duration_secs: self.current().map(|t| t.duration_secs).unwrap_or(0),
             volume: self.volume,
@@ -525,7 +535,7 @@ mod tests {
         e.play_queue(vec![track("a", "A")]).unwrap();
         let s = e.status();
         assert_eq!(s.state, PlaybackState::Playing);
-        assert_eq!(s.current_track.as_ref().unwrap().id, "a");
+        assert_eq!(s.current_track.as_deref(), Some("a"));
         assert_eq!(s.queue_length, 1);
         assert_eq!(s.queue_index, Some(0));
         assert!((s.volume - 1.0).abs() < 1e-9);
