@@ -4,8 +4,8 @@
 
 ### Cross-platform desktop music player built with Tauri, Next.js, and Rust
 
-[![CI](https://github.com/easymusic/easymusic/actions/workflows/ci.yml/badge.svg)](https://github.com/easymusic/easymusic/actions/workflows/ci.yml)
-[![Release](https://github.com/easymusic/easymusic/actions/workflows/release.yml/badge.svg)](https://github.com/easymusic/easymusic/actions/workflows/release.yml)
+[![CI](https://github.com/ymslucky/EasyMusic/actions/workflows/ci.yml/badge.svg)](https://github.com/ymslucky/EasyMusic/actions/workflows/ci.yml)
+[![Release](https://github.com/ymslucky/EasyMusic/actions/workflows/release.yml/badge.svg)](https://github.com/ymslucky/EasyMusic/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tauri](https://img.shields.io/badge/Tauri-v2-orange.svg)](https://v2.tauri.app/)
 [![Rust](https://img.shields.io/badge/Rust-stable-dea584.svg)](https://www.rust-lang.org/)
@@ -107,7 +107,7 @@ The app features five primary views accessible from a sidebar:
 
 ```bash
 # Clone
-git clone https://github.com/easymusic/easymusic.git
+git clone https://github.com/ymslucky/EasyMusic.git
 cd easymusic
 
 # Install dependencies

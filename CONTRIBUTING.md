@@ -16,7 +16,7 @@ disruptive behavior will not be tolerated.
 
 ### Reporting Bugs
 
-1. Check the [issue tracker](https://github.com/easymusic/easymusic/issues) to
+1. Check the [issue tracker](https://github.com/ymslucky/EasyMusic/issues) to
    see if the bug has already been reported.
 2. If not, open a new issue with:
    - A clear, descriptive title
@@ -75,7 +75,7 @@ disruptive behavior will not be tolerated.
 ### Getting Started
 
 ```bash
-git clone https://github.com/easymusic/easymusic.git
+git clone https://github.com/ymslucky/EasyMusic.git
 cd easymusic
 npm install
 npm --prefix frontend install
