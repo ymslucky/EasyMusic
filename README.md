@@ -40,6 +40,21 @@ npm run tauri:dev
 
 `npm run tauri:dev` starts `next dev` (port 1420) and opens the Tauri window
 pointing at it. Hot-reloads both the frontend and the Rust command layer.
+Run it from the repository root (the `beforeDevCommand` resolves `frontend/`
+relative to the invocation directory).
+
+### Headless / CI (no display server)
+
+```bash
+# rootless GTK/WebKit sysroot + Xvfb (see the scaffold notes in the task log)
+source /opt/data/env-tauri.sh
+export DISPLAY=:99
+Xvfb :99 -screen 0 1280x800x24 &
+eval "$(dbus-launch --sh-syntax)"
+export WEBKIT_DISABLE_DMABUF_RENDERER=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 \
+       WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 LIBGL_ALWAYS_SOFTWARE=1
+npm run tauri:dev
+```
 
 ## Building
 
