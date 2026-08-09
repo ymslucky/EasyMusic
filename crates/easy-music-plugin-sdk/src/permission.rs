@@ -39,11 +39,14 @@ impl Permission {
 
     /// Check whether a permission string is recognized.
     pub fn is_valid(s: &str) -> bool {
-        Self::from_str(s).is_ok()
+        s.parse::<Self>().is_ok()
     }
+}
 
-    /// Parse a permission from its string form (used by serde).
-    pub fn from_str(s: &str) -> Result<Self, String> {
+impl std::str::FromStr for Permission {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "library:read" => Ok(Permission::LibraryRead),
             "playback:control" => Ok(Permission::PlaybackControl),
@@ -78,7 +81,7 @@ impl<'de> Deserialize<'de> for Permission {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Permission::from_str(&s).map_err(serde::de::Error::custom)
+        s.parse::<Permission>().map_err(serde::de::Error::custom)
     }
 }
 
@@ -103,18 +106,18 @@ mod tests {
     #[test]
     fn known_permissions_parse() {
         assert_eq!(
-            Permission::from_str("library:read").unwrap(),
+            "library:read".parse::<Permission>().unwrap(),
             Permission::LibraryRead
         );
         assert_eq!(
-            Permission::from_str("network:fetch").unwrap(),
+            "network:fetch".parse::<Permission>().unwrap(),
             Permission::NetworkFetch
         );
     }
 
     #[test]
     fn unknown_permission_rejected() {
-        assert!(Permission::from_str("root:system").is_err());
+        assert!("root:system".parse::<Permission>().is_err());
     }
 
     #[test]

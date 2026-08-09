@@ -13,9 +13,7 @@ use crate::error::{CoreError, CoreResult};
 use crate::models::Track;
 
 /// Audio extensions we attempt to parse. Anything else is silently skipped.
-const SUPPORTED_EXTENSIONS: &[&str] = &[
-    "mp3", "flac", "wav", "ogg", "m4a", "aac", "opus", "wma",
-];
+const SUPPORTED_EXTENSIONS: &[&str] = &["mp3", "flac", "wav", "ogg", "m4a", "aac", "opus", "wma"];
 
 /// Options for a scan. Currently just a root path, but kept as a struct
 /// so future knobs (follow symlinks, max depth, extension overrides) can
@@ -188,7 +186,7 @@ mod tests {
         buf.extend_from_slice(&16u16.to_le_bytes()); // bits/sample
         buf.extend_from_slice(b"data");
         buf.extend_from_slice(&(data_size as u32).to_le_bytes());
-        buf.extend(std::iter::repeat(0u8).take(data_size));
+        buf.extend(std::iter::repeat_n(0u8, data_size));
         std::fs::write(&wav_path, &buf).unwrap();
 
         let lib = LibraryManager::open_memory().unwrap();

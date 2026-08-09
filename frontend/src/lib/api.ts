@@ -136,7 +136,7 @@ const mockPlugins: PluginInfo[] = [
 ];
 
 // In-memory mock playback state so the browser demo responds to every control.
-let mockPlayback = {
+const mockPlayback = {
   state: "Stopped" as PlaybackState,
   trackId: null as string | null,
   position: 0,

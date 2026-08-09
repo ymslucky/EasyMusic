@@ -77,7 +77,15 @@ impl Database {
             let album_id = track
                 .album
                 .as_deref()
-                .map(|a| upsert_album_row(conn, a, track.artist.as_str(), track.year, track.genre.as_deref()))
+                .map(|a| {
+                    upsert_album_row(
+                        conn,
+                        a,
+                        track.artist.as_str(),
+                        track.year,
+                        track.genre.as_deref(),
+                    )
+                })
                 .transpose()?;
 
             conn.execute(
@@ -118,7 +126,7 @@ impl Database {
             let tx = conn.unchecked_transaction()?;
             let mut added = 0u32;
             let mut updated = 0u32;
-            let mut skipped = 0u32;
+            let skipped = 0u32;
             for t in tracks {
                 let existed: bool = tx
                     .query_row(
@@ -132,7 +140,9 @@ impl Database {
                 let album_id = t
                     .album
                     .as_deref()
-                    .map(|a| upsert_album_row(&tx, a, t.artist.as_str(), t.year, t.genre.as_deref()))
+                    .map(|a| {
+                        upsert_album_row(&tx, a, t.artist.as_str(), t.year, t.genre.as_deref())
+                    })
                     .transpose()?;
                 tx.execute(
                     "INSERT INTO tracks (id, title, artist_id, album_id, genre, path, duration_secs,
@@ -335,9 +345,11 @@ impl Database {
                 |row| row.get(0),
             )?;
             let last_scanned: Option<String> = conn
-                .query_row("SELECT value FROM kv WHERE key = 'last_scanned'", [], |row| {
-                    row.get(0)
-                })
+                .query_row(
+                    "SELECT value FROM kv WHERE key = 'last_scanned'",
+                    [],
+                    |row| row.get(0),
+                )
                 .ok();
             Ok(LibraryMetadata {
                 total_tracks: total_tracks as u32,
@@ -510,11 +522,7 @@ impl Database {
         })
     }
 
-    pub fn remove_track_from_playlist(
-        &self,
-        playlist_id: &str,
-        track_id: &str,
-    ) -> CoreResult<()> {
+    pub fn remove_track_from_playlist(&self, playlist_id: &str, track_id: &str) -> CoreResult<()> {
         self.with_conn(|conn| {
             conn.execute(
                 "DELETE FROM playlist_tracks WHERE playlist_id = ?1 AND track_id = ?2",
@@ -601,9 +609,7 @@ fn row_to_track(row: &rusqlite::Row<'_>) -> rusqlite::Result<Track> {
 }
 
 /// Convenience to turn a single-row query result into an `Option<Track>`.
-fn row_to_track_opt(
-    result: rusqlite::Result<Track>,
-) -> CoreResult<Option<Track>> {
+fn row_to_track_opt(result: rusqlite::Result<Track>) -> CoreResult<Option<Track>> {
     match result {
         Ok(t) => Ok(Some(t)),
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),

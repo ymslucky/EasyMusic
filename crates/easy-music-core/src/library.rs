@@ -118,11 +118,7 @@ impl LibraryManager {
         self.db.add_track_to_playlist(playlist_id, track_id)
     }
 
-    pub fn remove_track_from_playlist(
-        &self,
-        playlist_id: &str,
-        track_id: &str,
-    ) -> CoreResult<()> {
+    pub fn remove_track_from_playlist(&self, playlist_id: &str, track_id: &str) -> CoreResult<()> {
         self.db.remove_track_from_playlist(playlist_id, track_id)
     }
 }

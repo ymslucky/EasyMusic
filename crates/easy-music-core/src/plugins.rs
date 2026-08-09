@@ -33,7 +33,10 @@ pub enum PluginError {
     /// Failed to read or parse a manifest.
     Manifest(ManifestLoadError),
     /// Manifest parsed but failed validation.
-    Validation { plugin_id: String, errors: Vec<String> },
+    Validation {
+        plugin_id: String,
+        errors: Vec<String>,
+    },
     /// A plugin directory path was not found.
     DirNotFound(PathBuf),
     /// A plugin with this id is already registered.
@@ -51,12 +54,22 @@ impl std::fmt::Display for PluginError {
         match self {
             PluginError::Manifest(e) => write!(f, "manifest error: {e}"),
             PluginError::Validation { plugin_id, errors } => {
-                write!(f, "manifest for '{plugin_id}' is invalid: {}", errors.join("; "))
+                write!(
+                    f,
+                    "manifest for '{plugin_id}' is invalid: {}",
+                    errors.join("; ")
+                )
             }
-            PluginError::DirNotFound(p) => write!(f, "plugins directory not found: {}", p.display()),
+            PluginError::DirNotFound(p) => {
+                write!(f, "plugins directory not found: {}", p.display())
+            }
             PluginError::DuplicateId(id) => write!(f, "plugin id '{id}' is already registered"),
             PluginError::EntryNotFound { plugin_id, path } => {
-                write!(f, "plugin '{plugin_id}' entry point not found: {}", path.display())
+                write!(
+                    f,
+                    "plugin '{plugin_id}' entry point not found: {}",
+                    path.display()
+                )
             }
             PluginError::NotRegistered(id) => write!(f, "plugin '{id}' is not registered"),
             PluginError::Io(e) => write!(f, "I/O error: {e}"),
@@ -84,21 +97,16 @@ pub type PluginResult<T> = Result<T, PluginError>;
 // ── Plugin state ────────────────────────────────────────────────────────
 
 /// Runtime status of a registered plugin.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum PluginStatus {
+    /// Plugin loaded and enabled.
+    #[default]
+    Enabled,
     /// Plugin loaded but disabled by the user.
     Disabled,
-    /// Plugin loaded and enabled.
-    Enabled,
     /// Plugin failed to load (see `error` field on `RegisteredPlugin`).
     Error,
-}
-
-impl Default for PluginStatus {
-    fn default() -> Self {
-        PluginStatus::Enabled
-    }
 }
 
 /// A plugin that has been discovered and loaded by the manager.
@@ -133,7 +141,10 @@ impl RegisteredPlugin {
 
     /// Check if the plugin subscribes to a given hook name.
     pub fn has_hook(&self, hook_name: &str) -> bool {
-        self.manifest.hooks.iter().any(|h| h.to_string() == hook_name)
+        self.manifest
+            .hooks
+            .iter()
+            .any(|h| h.to_string() == hook_name)
     }
 }
 
@@ -378,7 +389,10 @@ mod tests {
         assert_eq!(mgr.len(), 2);
         assert!(mgr.get("com.test.one").is_some());
         assert!(mgr.get("com.test.two").is_some());
-        assert_eq!(mgr.get("com.test.one").unwrap().status, PluginStatus::Enabled);
+        assert_eq!(
+            mgr.get("com.test.one").unwrap().status,
+            PluginStatus::Enabled
+        );
     }
 
     #[test]
@@ -405,10 +419,7 @@ mod tests {
         mgr.load_all().unwrap();
 
         assert_eq!(mgr.len(), 2);
-        assert_eq!(
-            mgr.get("com.test.bad").unwrap().status,
-            PluginStatus::Error
-        );
+        assert_eq!(mgr.get("com.test.bad").unwrap().status, PluginStatus::Error);
         assert_eq!(mgr.enabled().len(), 1);
     }
 
@@ -424,7 +435,10 @@ mod tests {
         let mut mgr = PluginManager::new(&root);
         mgr.load_all().unwrap();
 
-        assert_eq!(mgr.get("com.test.toggle").unwrap().status, PluginStatus::Enabled);
+        assert_eq!(
+            mgr.get("com.test.toggle").unwrap().status,
+            PluginStatus::Enabled
+        );
 
         mgr.disable("com.test.toggle").unwrap();
         assert_eq!(
@@ -433,7 +447,10 @@ mod tests {
         );
 
         mgr.enable("com.test.toggle").unwrap();
-        assert_eq!(mgr.get("com.test.toggle").unwrap().status, PluginStatus::Enabled);
+        assert_eq!(
+            mgr.get("com.test.toggle").unwrap().status,
+            PluginStatus::Enabled
+        );
     }
 
     #[test]

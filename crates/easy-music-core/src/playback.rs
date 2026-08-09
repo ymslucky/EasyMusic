@@ -285,7 +285,8 @@ impl<S: AudioSink> PlaybackEngine<S> {
 
     // -- navigation -----------------------------------------------------
 
-    pub fn next(&mut self) -> CoreResult<()> {
+    /// Advance to the next track (or repeat, or stop at end).
+    pub fn advance(&mut self) -> CoreResult<()> {
         let idx = self
             .index
             .ok_or_else(|| CoreError::Playback("cannot advance: queue position is none".into()))?;
@@ -443,14 +444,14 @@ mod tests {
             .unwrap();
         assert_eq!(e.current().unwrap().id, "a");
 
-        e.next().unwrap();
+        e.advance().unwrap();
         assert_eq!(e.current().unwrap().id, "b");
 
-        e.next().unwrap();
+        e.advance().unwrap();
         assert_eq!(e.current().unwrap().id, "c");
 
         // end of queue with repeat off -> stops
-        e.next().unwrap();
+        e.advance().unwrap();
         assert_eq!(e.state(), PlaybackState::Stopped);
 
         // previous from stopped is an error
@@ -463,9 +464,9 @@ mod tests {
         e.set_repeat(RepeatMode::All);
         e.play_queue(vec![track("a", "A"), track("b", "B")])
             .unwrap();
-        e.next().unwrap();
+        e.advance().unwrap();
         assert_eq!(e.current().unwrap().id, "b");
-        e.next().unwrap();
+        e.advance().unwrap();
         assert_eq!(e.current().unwrap().id, "a"); // wrapped
     }
 
@@ -475,7 +476,7 @@ mod tests {
         e.set_repeat(RepeatMode::One);
         e.play_queue(vec![track("a", "A"), track("b", "B")])
             .unwrap();
-        e.next().unwrap();
+        e.advance().unwrap();
         assert_eq!(e.current().unwrap().id, "a");
     }
 

@@ -5,10 +5,10 @@
 //! the core crate and any future host-side tooling without pulling in heavy
 //! deps.
 
+pub mod hook;
 pub mod manifest;
 pub mod permission;
-pub mod hook;
 
-pub use manifest::{PluginManifest, PluginEngine};
-pub use permission::Permission;
 pub use hook::PluginHook;
+pub use manifest::{PluginEngine, PluginManifest};
+pub use permission::Permission;

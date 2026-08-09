@@ -63,16 +63,16 @@ impl PluginManifest {
     /// `plugin_dir` is the root directory of the plugin.
     pub fn from_plugin_dir(plugin_dir: &std::path::Path) -> Result<Self, ManifestLoadError> {
         let manifest_path = plugin_dir.join("plugin.json");
-        let content = std::fs::read_to_string(&manifest_path).map_err(|e| ManifestLoadError::Io {
-            path: manifest_path.clone(),
-            source: e,
-        })?;
-        let manifest: Self = serde_json::from_str(&content).map_err(|e| {
-            ManifestLoadError::Parse {
+        let content =
+            std::fs::read_to_string(&manifest_path).map_err(|e| ManifestLoadError::Io {
                 path: manifest_path.clone(),
                 source: e,
-            }
-        })?;
+            })?;
+        let manifest: Self =
+            serde_json::from_str(&content).map_err(|e| ManifestLoadError::Parse {
+                path: manifest_path.clone(),
+                source: e,
+            })?;
         Ok(manifest)
     }
 
@@ -185,7 +185,10 @@ mod tests {
         assert_eq!(m.entry, "index.js");
         assert_eq!(m.permissions.len(), 2);
         assert_eq!(m.hooks.len(), 2);
-        assert!(m.validate().is_empty(), "valid manifest should have no errors");
+        assert!(
+            m.validate().is_empty(),
+            "valid manifest should have no errors"
+        );
     }
 
     #[test]

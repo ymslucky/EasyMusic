@@ -26,8 +26,8 @@ impl AppState {
     /// Create the default state with an in-memory library. In production the
     /// frontend will call `library_open_db` to switch to a persistent file.
     pub fn new() -> Self {
-        let library = LibraryManager::open_memory()
-            .expect("failed to open default in-memory library");
+        let library =
+            LibraryManager::open_memory().expect("failed to open default in-memory library");
         let playback = PlaybackEngine::new(NullAudioSink::new());
         Self {
             library: Mutex::new(library),
@@ -90,10 +90,7 @@ pub fn greet(name: String) -> String {
 
 /// Reopen the library against a file-backed SQLite DB so data persists.
 #[tauri::command]
-pub fn library_open_db(
-    db_path: String,
-    state: tauri::State<'_, AppState>,
-) -> CmdResult<()> {
+pub fn library_open_db(db_path: String, state: tauri::State<'_, AppState>) -> CmdResult<()> {
     let lib = LibraryManager::open(&db_path)?;
     *state.library.lock().unwrap() = lib;
     Ok(())
@@ -101,19 +98,14 @@ pub fn library_open_db(
 
 /// Scan a directory and index all discovered audio files.
 #[tauri::command]
-pub fn library_scan(
-    root: String,
-    state: tauri::State<'_, AppState>,
-) -> CmdResult<ScanResult> {
+pub fn library_scan(root: String, state: tauri::State<'_, AppState>) -> CmdResult<ScanResult> {
     let lib = state.library.lock().unwrap();
     Ok(lib.scan_directory(&PathBuf::from(&root))?)
 }
 
 /// Aggregate stats about the library.
 #[tauri::command]
-pub fn library_metadata(
-    state: tauri::State<'_, AppState>,
-) -> CmdResult<LibraryMetadata> {
+pub fn library_metadata(state: tauri::State<'_, AppState>) -> CmdResult<LibraryMetadata> {
     let lib = state.library.lock().unwrap();
     Ok(lib.metadata()?)
 }
@@ -138,10 +130,7 @@ pub fn track_get(id: String, state: tauri::State<'_, AppState>) -> CmdResult<Opt
 
 /// Full-text search across title, artist, album, and genre.
 #[tauri::command]
-pub fn tracks_search(
-    query: String,
-    state: tauri::State<'_, AppState>,
-) -> CmdResult<Vec<Track>> {
+pub fn tracks_search(query: String, state: tauri::State<'_, AppState>) -> CmdResult<Vec<Track>> {
     let lib = state.library.lock().unwrap();
     Ok(lib.search_tracks(&query)?)
 }
@@ -177,10 +166,7 @@ pub fn artists_all(state: tauri::State<'_, AppState>) -> CmdResult<Vec<Artist>> 
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn playlist_create(
-    name: String,
-    state: tauri::State<'_, AppState>,
-) -> CmdResult<Playlist> {
+pub fn playlist_create(name: String, state: tauri::State<'_, AppState>) -> CmdResult<Playlist> {
     let lib = state.library.lock().unwrap();
     Ok(lib.create_playlist(&name)?)
 }
@@ -290,10 +276,7 @@ pub fn playback_stop(state: tauri::State<'_, AppState>) -> CmdResult<PlaybackSta
 }
 
 #[tauri::command]
-pub fn playback_seek(
-    secs: u32,
-    state: tauri::State<'_, AppState>,
-) -> CmdResult<PlaybackStatus> {
+pub fn playback_seek(secs: u32, state: tauri::State<'_, AppState>) -> CmdResult<PlaybackStatus> {
     let mut engine = state.playback.lock().unwrap();
     engine.seek(secs)?;
     Ok(engine.status())
@@ -312,7 +295,7 @@ pub fn playback_set_volume(
 #[tauri::command]
 pub fn playback_next(state: tauri::State<'_, AppState>) -> CmdResult<PlaybackStatus> {
     let mut engine = state.playback.lock().unwrap();
-    engine.next()?;
+    engine.advance()?;
     Ok(engine.status())
 }
 
@@ -334,9 +317,7 @@ pub fn playback_set_repeat(
 }
 
 #[tauri::command]
-pub fn playback_toggle_shuffle(
-    state: tauri::State<'_, AppState>,
-) -> CmdResult<PlaybackStatus> {
+pub fn playback_toggle_shuffle(state: tauri::State<'_, AppState>) -> CmdResult<PlaybackStatus> {
     let mut engine = state.playback.lock().unwrap();
     engine.toggle_shuffle();
     Ok(engine.status())

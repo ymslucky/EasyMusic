@@ -9,9 +9,11 @@ import { isTauri } from "@tauri-apps/api/core";
 
 import type {
   EasyMusicPlugin,
+  Permission,
   PluginAPI,
   PluginHookName,
   PluginInfo,
+  PluginManifest,
   Track,
   PlaybackStatePayload,
   LibraryScannedPayload,
@@ -163,16 +165,16 @@ export class PluginRuntime {
   /** Create the permission-scoped API object for a plugin. */
   private createPluginAPI(info: PluginInfo): PluginAPI {
     const perms = new Set(info.permissions);
-    const manifest = {
+    const manifest: PluginManifest = {
       id: info.id,
       name: info.name,
       version: info.version,
       author: info.author,
       description: info.description,
-      engine: "js" as const,
+      engine: "js",
       entry: "",
-      permissions: perms as Set<string> as any,
-      hooks: info.hooks as any[],
+      permissions: info.permissions as Permission[],
+      hooks: info.hooks as PluginHookName[],
     };
 
     const api: PluginAPI = {

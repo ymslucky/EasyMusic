@@ -25,9 +25,10 @@ pub enum PluginHook {
     AudioTransform,
 }
 
-impl PluginHook {
-    /// Parse a hook from its manifest string form.
-    pub fn from_str(s: &str) -> Result<Self, String> {
+impl std::str::FromStr for PluginHook {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "onPluginLoaded" => Ok(PluginHook::OnPluginLoaded),
             "onTrackChanged" => Ok(PluginHook::OnTrackChanged),
@@ -62,7 +63,7 @@ impl<'de> Deserialize<'de> for PluginHook {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        PluginHook::from_str(&s).map_err(serde::de::Error::custom)
+        s.parse::<PluginHook>().map_err(serde::de::Error::custom)
     }
 }
 
@@ -82,18 +83,18 @@ mod tests {
     #[test]
     fn parse_known_hooks() {
         assert_eq!(
-            PluginHook::from_str("onTrackChanged").unwrap(),
+            "onTrackChanged".parse::<PluginHook>().unwrap(),
             PluginHook::OnTrackChanged
         );
         assert_eq!(
-            PluginHook::from_str("customUIPanel").unwrap(),
+            "customUIPanel".parse::<PluginHook>().unwrap(),
             PluginHook::CustomUiPanel
         );
     }
 
     #[test]
     fn reject_unknown_hook() {
-        assert!(PluginHook::from_str("onCatastrophe").is_err());
+        assert!("onCatastrophe".parse::<PluginHook>().is_err());
     }
 
     #[test]
