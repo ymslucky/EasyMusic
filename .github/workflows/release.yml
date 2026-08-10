@@ -6,6 +6,11 @@ on:
     tags:
       - 'v*'
 
+# The auto-generated GITHUB_TOKEN defaults to read-only for this repo;
+# release creation (tag pushes only) needs contents: write.
+permissions:
+  contents: write
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -107,7 +112,11 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
+          # Only create a GitHub Release on tag pushes (v*). On plain branch
+          # pushes tagName is empty -> tauri-action builds and uploads
+          # artifacts but skips release creation (avoids a release named "main"
+          # and the read-only-token 403 on every push to main).
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: 'EasyMusic ${{ github.ref_name }}'
           releaseBody: 'See the assets below to download and install EasyMusic.'
           releaseDraft: true
