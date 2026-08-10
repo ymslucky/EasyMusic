@@ -130,12 +130,12 @@ jobs:
         with:
           name: EasyMusic-${{ matrix.target }}
           path: |
-            target/release/bundle/**/*.deb
-            target/release/bundle/**/*.AppImage
-            target/release/bundle/**/*.dmg
-            target/release/bundle/**/*.app
-            target/release/bundle/**/*.msi
-            target/release/bundle/**/*-setup.*
-            target/release/bundle/**/*.exe
+            target/**/release/bundle/**/*.deb
+            target/**/release/bundle/**/*.AppImage
+            target/**/release/bundle/**/*.dmg
+            target/**/release/bundle/**/*.app
+            target/**/release/bundle/**/*.msi
+            target/**/release/bundle/**/*-setup.*
+            target/**/release/bundle/**/*.exe
           if-no-files-found: ignore
           retention-days: 30
