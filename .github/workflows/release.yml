@@ -130,12 +130,12 @@ jobs:
         with:
           name: EasyMusic-${{ matrix.target }}
           path: |
-            src-tauri/target/**/release/bundle/**/*.deb
-            src-tauri/target/**/release/bundle/**/*.AppImage
-            src-tauri/target/**/release/bundle/**/*.dmg
-            src-tauri/target/**/release/bundle/**/*.app
-            src-tauri/target/**/release/bundle/**/*.msi
-            src-tauri/target/**/release/bundle/**/*-setup.*
-            src-tauri/target/**/release/bundle/**/*.exe
+            target/release/bundle/**/*.deb
+            target/release/bundle/**/*.AppImage
+            target/release/bundle/**/*.dmg
+            target/release/bundle/**/*.app
+            target/release/bundle/**/*.msi
+            target/release/bundle/**/*-setup.*
+            target/release/bundle/**/*.exe
           if-no-files-found: ignore
           retention-days: 30
