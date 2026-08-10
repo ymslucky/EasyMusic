@@ -31,7 +31,7 @@
     "active": true,
     "targets": "all",
     "publisher": "EasyMusic",
-    "category": "AudioVideo",
+    "category": "Music",
     "shortDescription": "Cross-platform desktop music player",
     "longDescription": "EasyMusic is a cross-platform desktop music player built with Tauri, Next.js, and Rust. Browse your library, create playlists, manage playback, and extend with plugins.",
     "copyright": "MIT",
