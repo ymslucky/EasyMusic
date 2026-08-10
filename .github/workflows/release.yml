@@ -88,6 +88,9 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
 
       # ── Build the app ──────────────────────────────────
+      - name: Install root dependencies (Tauri CLI)
+        run: npm ci
+
       - name: Install frontend dependencies
         run: npm ci
         working-directory: frontend
