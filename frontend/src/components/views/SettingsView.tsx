@@ -60,17 +60,17 @@ export function SettingsView() {
     <div className="h-full overflow-y-auto">
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-10">
         <header>
-          <h2 className="text-2xl font-bold">设置</h2>
+          <h2 className="text-2xl font-bold">Settings</h2>
           <p className="text-sm text-text-muted mt-1">
-            管理音乐库目录、外观和插件。
+            Manage your music library directories, appearance, and plugins.
           </p>
         </header>
 
         {/* Library directories */}
         <Section
           icon={<Music size={18} />}
-          title="音乐库目录"
-          desc="EasyMusic 扫描以下目录中的音频文件。"
+          title="Library Directories"
+          desc="EasyMusic scans these directories for audio files."
         >
           <div className="space-y-2">
             {libraryDirs.map((dir) => (
@@ -84,25 +84,25 @@ export function SettingsView() {
                   <div className="text-xs text-text-muted truncate">{dir.path}</div>
                 </div>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">
-                  {dir.enabled ? "活跃" : "已禁用"}
+                  {dir.enabled ? "Active" : "Disabled"}
                 </span>
                 <button
                   onClick={() => removeLibraryDir(dir.id)}
                   className="text-text-muted hover:text-danger"
-                  aria-label={`移除 ${dir.label}`}
+                  aria-label={`Remove ${dir.label}`}
                 >
                   <Trash2 size={15} />
                 </button>
               </div>
             ))}
             {libraryDirs.length === 0 && (
-              <p className="text-sm text-text-muted py-2">尚未添加目录。</p>
+              <p className="text-sm text-text-muted py-2">No directories added yet.</p>
             )}
           </div>
 
           <div className="mt-4 flex gap-2 items-end">
             <div className="flex-1">
-              <label className="block text-xs text-text-muted mb-1">路径</label>
+              <label className="block text-xs text-text-muted mb-1">Path</label>
               <input
                 type="text"
                 placeholder="/home/user/Music"
@@ -112,7 +112,7 @@ export function SettingsView() {
               />
             </div>
             <div className="w-40">
-              <label className="block text-xs text-text-muted mb-1">标签</label>
+              <label className="block text-xs text-text-muted mb-1">Label</label>
               <input
                 type="text"
                 placeholder="Music"
@@ -122,7 +122,7 @@ export function SettingsView() {
               />
             </div>
             <Button variant="primary" size="md" onClick={handleAddDir}>
-              添加
+              Add
             </Button>
           </div>
         </Section>
@@ -130,24 +130,24 @@ export function SettingsView() {
         {/* Appearance */}
         <Section
           icon={<Palette size={18} />}
-          title="外观"
-          desc="主题与显示偏好。"
+          title="Appearance"
+          desc="Theme and display preferences."
         >
           <div className="rounded-md border border-border bg-bg-elevated px-4 py-3 flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">深色主题</div>
+              <div className="text-sm font-medium">Dark theme</div>
               <div className="text-xs text-text-muted">
-                EasyMusic 为深色模式设计，浅色主题计划中。
+                EasyMusic is designed for dark mode; a light theme is planned.
               </div>
             </div>
             <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">
-              已启用
+              Enabled
             </span>
           </div>
           <div className="mt-2 rounded-md border border-border bg-bg-elevated px-4 py-3 flex items-center justify-between">
             <div>
-              <div className="text-sm font-medium">强调色</div>
-              <div className="text-xs text-text-muted">Emerald (默认)</div>
+              <div className="text-sm font-medium">Accent color</div>
+              <div className="text-xs text-text-muted">Emerald (default)</div>
             </div>
             <div className="w-6 h-6 rounded-full bg-accent" />
           </div>
@@ -156,14 +156,14 @@ export function SettingsView() {
         {/* Plugins */}
         <Section
           icon={<Plug size={18} />}
-          title="插件"
-          desc="扩展 EasyMusic 的功能。将插件放入 plugins/ 目录或从路径安装。"
+          title="Plugins"
+          desc="Extend EasyMusic with plugins. Drop them into the plugins/ directory or install from a path."
         >
           {/* Plugin actions */}
           <div className="flex gap-2 mb-4">
             <Button variant="secondary" size="sm" onClick={handleReload}>
               <RefreshCw size={14} className="mr-1.5" />
-              重新加载
+              Reload
             </Button>
           </div>
 
@@ -185,8 +185,9 @@ export function SettingsView() {
             ))}
             {plugins.length === 0 && (
               <p className="text-sm text-text-muted py-2">
-                暂无已安装插件。将插件放入{" "}
-                <code className="text-text">plugins/</code> 目录，或使用下方路径安装。
+                No plugins installed yet. Drop a plugin into the{" "}
+                <code className="text-text">plugins/</code> directory, or install
+                from a path below.
               </p>
             )}
           </div>
@@ -195,7 +196,7 @@ export function SettingsView() {
           <div className="mt-4 flex gap-2 items-end">
             <div className="flex-1">
               <label className="block text-xs text-text-muted mb-1">
-                从路径安装插件
+                Install plugin from path
               </label>
               <input
                 type="text"
@@ -207,13 +208,13 @@ export function SettingsView() {
             </div>
             <Button variant="primary" size="md" onClick={handleInstallPlugin}>
               <FolderInput size={15} className="mr-1.5" />
-              安装
+              Install
             </Button>
           </div>
         </Section>
 
         <div className="text-xs text-text-muted border-t border-border pt-4 pb-8">
-          EasyMusic 0.1.0 · Tauri + Next.js + Rust
+          EasyMusic 0.1.1 · Tauri + Next.js + Rust
         </div>
       </div>
     </div>
@@ -256,7 +257,7 @@ function PluginCard({
             )}
           </div>
           <div className="text-xs text-text-muted truncate">
-            {plugin.description || (isError ? plugin.error : "无描述")}
+            {plugin.description || (isError ? plugin.error : "No description")}
           </div>
         </div>
 
@@ -264,7 +265,7 @@ function PluginCard({
         <button
           role="switch"
           aria-checked={isEnabled}
-          aria-label={`切换 ${plugin.name}`}
+          aria-label={`Toggle ${plugin.name}`}
           onClick={() => onToggle(!isEnabled)}
           disabled={isError}
           className={`relative w-10 h-6 rounded-full transition-colors ${
@@ -286,7 +287,7 @@ function PluginCard({
         <button
           onClick={onToggleExpand}
           className="text-text-muted hover:text-text p-1"
-          aria-label={expanded ? "收起详情" : "展开详情"}
+          aria-label={expanded ? "Collapse details" : "Expand details"}
         >
           {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </button>
@@ -302,7 +303,7 @@ function PluginCard({
 
           {plugin.hooks.length > 0 && (
             <div className="text-xs">
-              <span className="text-text-muted">钩子: </span>
+              <span className="text-text-muted">Hooks: </span>
               {plugin.hooks.map((h) => (
                 <code
                   key={h}
@@ -318,7 +319,7 @@ function PluginCard({
             <div className="text-xs">
               <span className="text-text-muted inline-flex items-center gap-1">
                 <Shield size={11} />
-                权限:
+                Permissions:
               </span>{" "}
               {plugin.permissions.map((p) => (
                 <code
@@ -343,7 +344,7 @@ function PluginCard({
               className="text-xs text-text-muted hover:text-danger inline-flex items-center gap-1"
             >
               <Trash2 size={12} />
-              卸载
+              Uninstall
             </button>
           </div>
         </div>

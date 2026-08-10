@@ -734,7 +734,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "easy-music-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "easy-music-plugin-sdk",
@@ -750,7 +750,7 @@ dependencies = [
 
 [[package]]
 name = "easy-music-plugin-sdk"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -758,7 +758,7 @@ dependencies = [
 
 [[package]]
 name = "easymusic"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "easy-music-core",
  "serde",

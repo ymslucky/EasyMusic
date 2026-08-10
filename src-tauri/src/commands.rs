@@ -5,7 +5,7 @@
 //! `AppState` struct so the frontend can reach them through `invoke()`.
 
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
 
 use easy_music_core::models::{
     Album, Artist, LibraryMetadata, Playlist, PlaylistWithTracks, ScanResult, Track, TrackFilter,
@@ -15,10 +15,12 @@ use easy_music_core::LibraryManager;
 
 use serde::Serialize;
 
-/// The shared app state managed by Tauri. Each field is wrapped in a `Mutex`
-/// so commands can run concurrently from the frontend's async runtime.
+/// The shared app state managed by Tauri. The library uses an `RwLock` so a
+/// long-running scan (which takes a read guard) does not block other library
+/// reads; only `library_open_db` needs the write guard. Playback stays behind
+/// a `Mutex` — commands can run concurrently from the frontend's async runtime.
 pub struct AppState {
-    pub library: Mutex<LibraryManager>,
+    pub library: RwLock<LibraryManager>,
     pub playback: Mutex<PlaybackEngine<NullAudioSink>>,
 }
 
@@ -30,7 +32,7 @@ impl AppState {
             LibraryManager::open_memory().expect("failed to open default in-memory library");
         let playback = PlaybackEngine::new(NullAudioSink::new());
         Self {
-            library: Mutex::new(library),
+            library: RwLock::new(library),
             playback: Mutex::new(playback),
         }
     }
@@ -92,21 +94,21 @@ pub fn greet(name: String) -> String {
 #[tauri::command]
 pub fn library_open_db(db_path: String, state: tauri::State<'_, AppState>) -> CmdResult<()> {
     let lib = LibraryManager::open(&db_path)?;
-    *state.library.lock().unwrap() = lib;
+    *state.library.write().unwrap() = lib;
     Ok(())
 }
 
 /// Scan a directory and index all discovered audio files.
 #[tauri::command]
 pub fn library_scan(root: String, state: tauri::State<'_, AppState>) -> CmdResult<ScanResult> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.scan_directory(&PathBuf::from(&root))?)
 }
 
 /// Aggregate stats about the library.
 #[tauri::command]
 pub fn library_metadata(state: tauri::State<'_, AppState>) -> CmdResult<LibraryMetadata> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.metadata()?)
 }
 
@@ -117,21 +119,21 @@ pub fn library_metadata(state: tauri::State<'_, AppState>) -> CmdResult<LibraryM
 /// Return every track in the library, ordered by title.
 #[tauri::command]
 pub fn tracks_all(state: tauri::State<'_, AppState>) -> CmdResult<Vec<Track>> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.all_tracks()?)
 }
 
 /// Fetch a single track by id.
 #[tauri::command]
 pub fn track_get(id: String, state: tauri::State<'_, AppState>) -> CmdResult<Option<Track>> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.get_track(&id)?)
 }
 
 /// Full-text search across title, artist, album, and genre.
 #[tauri::command]
 pub fn tracks_search(query: String, state: tauri::State<'_, AppState>) -> CmdResult<Vec<Track>> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.search_tracks(&query)?)
 }
 
@@ -141,7 +143,7 @@ pub fn tracks_filter(
     filter: TrackFilter,
     state: tauri::State<'_, AppState>,
 ) -> CmdResult<Vec<Track>> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.filter_tracks(&filter)?)
 }
 
@@ -151,13 +153,13 @@ pub fn tracks_filter(
 
 #[tauri::command]
 pub fn albums_all(state: tauri::State<'_, AppState>) -> CmdResult<Vec<Album>> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.all_albums()?)
 }
 
 #[tauri::command]
 pub fn artists_all(state: tauri::State<'_, AppState>) -> CmdResult<Vec<Artist>> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.all_artists()?)
 }
 
@@ -167,7 +169,7 @@ pub fn artists_all(state: tauri::State<'_, AppState>) -> CmdResult<Vec<Artist>> 
 
 #[tauri::command]
 pub fn playlist_create(name: String, state: tauri::State<'_, AppState>) -> CmdResult<Playlist> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.create_playlist(&name)?)
 }
 
@@ -177,19 +179,19 @@ pub fn playlist_rename(
     new_name: String,
     state: tauri::State<'_, AppState>,
 ) -> CmdResult<()> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.rename_playlist(&id, &new_name)?)
 }
 
 #[tauri::command]
 pub fn playlist_delete(id: String, state: tauri::State<'_, AppState>) -> CmdResult<()> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.delete_playlist(&id)?)
 }
 
 #[tauri::command]
 pub fn playlists_all(state: tauri::State<'_, AppState>) -> CmdResult<Vec<Playlist>> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.all_playlists()?)
 }
 
@@ -198,7 +200,7 @@ pub fn playlist_get(
     id: String,
     state: tauri::State<'_, AppState>,
 ) -> CmdResult<PlaylistWithTracks> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.get_playlist(&id)?)
 }
 
@@ -208,7 +210,7 @@ pub fn playlist_add_track(
     track_id: String,
     state: tauri::State<'_, AppState>,
 ) -> CmdResult<()> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.add_track_to_playlist(&playlist_id, &track_id)?)
 }
 
@@ -218,7 +220,7 @@ pub fn playlist_remove_track(
     track_id: String,
     state: tauri::State<'_, AppState>,
 ) -> CmdResult<()> {
-    let lib = state.library.lock().unwrap();
+    let lib = state.library.read().unwrap();
     Ok(lib.remove_track_from_playlist(&playlist_id, &track_id)?)
 }
 
