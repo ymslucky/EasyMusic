@@ -5,6 +5,9 @@ on:
     branches: [main]
     tags:
       - 'v*'
+  # Manual escape hatch — produces artifacts only, never a release
+  # (tagName is empty on non-tag refs, so tauri-action skips release creation).
+  workflow_dispatch:
 
 # The auto-generated GITHUB_TOKEN defaults to read-only for this repo;
 # release creation (tag pushes only) needs contents: write.
@@ -20,9 +23,75 @@ env:
 
 jobs:
   # ════════════════════════════════════════════════════════
+  # Validate tag ↔ version-file consistency before building.
+  # Runs only on tag pushes; skipped on branch pushes, PRs,
+  # and manual dispatch (no release is produced on those).
+  # See docs/release-policy.md for the full policy.
+  # ════════════════════════════════════════════════════════
+  validate-version:
+    name: Validate tag ↔ version
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    outputs:
+      changelog: ${{ steps.changelog.outputs.body }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need full history for git log
+
+      - name: Verify tag is SemVer
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          if ! echo "$TAG" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
+            echo "::error::Tag '$GITHUB_REF_NAME' is not valid SemVer (expected vX.Y.Z[-pre])"
+            exit 1
+          fi
+          echo "Tag version: $TAG"
+
+      - name: Verify tag matches tauri.conf.json
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          CONF_VER=$(jq -r '.version' src-tauri/tauri.conf.json)
+          PKG_VER=$(jq -r '.version' package.json)
+          if [ "$TAG" != "$CONF_VER" ]; then
+            echo "::error::Tag '$TAG' != tauri.conf.json version '$CONF_VER'"
+            exit 1
+          fi
+          if [ "$TAG" != "$PKG_VER" ]; then
+            echo "::error::Tag '$TAG' != package.json version '$PKG_VER'"
+            exit 1
+          fi
+          echo "All three version sources agree: $TAG"
+
+      - name: Generate changelog from commits
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -n "$PREV_TAG" ]; then
+            BODY=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
+          else
+            BODY=$(git log --pretty=format:"- %s" -30)
+          fi
+          {
+            echo "body<<CHANGELOG_EOF"
+            echo "## Changes"
+            echo ""
+            echo "$BODY"
+            echo ""
+            echo "---"
+            echo "Full changelog: https://github.com/${{ github.repository }}/compare/${PREV_TAG:-$(git rev-list --max-parents=0 HEAD | head -1)}...${{ github.ref_name }}"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  # ════════════════════════════════════════════════════════
   # Build native installers on all three desktop platforms
   # ════════════════════════════════════════════════════════
   build:
+    needs: validate-version
+    # allow non-tag runs (branch push, workflow_dispatch) to skip the guard
+    if: |
+      always() &&
+      (github.ref_type != 'tag' || needs.validate-version.result == 'success')
     strategy:
       fail-fast: false
       matrix:
@@ -118,7 +187,7 @@ jobs:
           # and the read-only-token 403 on every push to main).
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: 'EasyMusic ${{ github.ref_name }}'
-          releaseBody: 'See the assets below to download and install EasyMusic.'
+          releaseBody: ${{ needs.validate-version.outputs.changelog }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

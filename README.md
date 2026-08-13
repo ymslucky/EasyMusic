@@ -237,6 +237,20 @@ Triggers on tag pushes (`v*`) and produces installers for four targets:
 
 Each release creates a **draft GitHub Release** with downloadable installers.
 
+#### Release Runbook
+
+Releases are triggered by pushing an annotated SemVer tag (`vX.Y.Z`). Before
+tagging, bump the version in **both** `src-tauri/tauri.conf.json` and
+`package.json` — the `validate-version` CI job will fail the release if the tag
+doesn't match both files. The workflow then builds all desktop installers (and
+the Android APK once `build-apk.yml` is merged to `main`), creates a **draft**
+GitHub Release named `EasyMusic vX.Y.Z` with an auto-generated commit-log
+changelog, and waits for the maintainer to review assets and click **Publish**.
+Branch pushes, PRs, and manual `workflow_dispatch` runs produce throwaway
+artifacts only — they never create or mutate a release. See the full
+**[Release Policy](docs/release-policy.md)** for trigger rules, secret
+requirements, and versioning conventions.
+
 ### Optional Code-Signing
 
 Configure repository secrets for signed builds:
@@ -269,6 +283,7 @@ TAURI_KEY_PASSWORD
 - [Architecture Overview](docs/architecture.md) — System design with Mermaid diagrams
 - [Plugin Development Guide](docs/plugin-development.md) — Complete plugin API reference
 - [ADR-0001: Plugin System](docs/adr/0001-plugin-system.md) — Why we chose JS plugins
+- [Release Policy](docs/release-policy.md) — Trigger rules, version source, changelog derivation
 - [Contributing Guide](CONTRIBUTING.md) — How to contribute
 
 ## Supported Audio Formats
