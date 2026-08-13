@@ -1,0 +1,155 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HAS_SIGNING_KEY: ${{ secrets.SIGNING_KEY != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Accept Android SDK licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup_ndk
+        with:
+          ndk-version: r27c
+
+      - name: Export NDK_HOME
+        run: echo "NDK_HOME=${{ steps.setup_ndk.outputs.ndk-path }}" >> $GITHUB_ENV
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: apk-android
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Decode signing keystore
+        if: env.HAS_SIGNING_KEY == 'true'
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          echo "$SIGNING_KEY" | base64 -d > app/release.keystore
+          echo "KEYSTORE_PATH=$(pwd)/app/release.keystore" >> $GITHUB_ENV
+
+      - name: Initialize Tauri Android project
+        run: npx tauri android init
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x src-tauri/gen/android/gradlew
+
+      - name: Configure Gradle release signing
+        if: env.KEYSTORE_PATH != ''
+        run: |
+          BUILD_GRADLE="src-tauri/gen/android/app/build.gradle.kts"
+          if grep -q "signingConfigs" "$BUILD_GRADLE"; then
+            echo "Signing config already present"
+          else
+            sed -i '/buildTypes {/i\    signingConfigs {\n        create("release") {\n            storeFile = file(System.getenv("KEYSTORE_PATH") ?: "../app/release.keystore")\n            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""\n            keyAlias = System.getenv("KEY_ALIAS") ?: ""\n            keyPassword = System.getenv("KEY_PASSWORD") ?: ""\n        }\n    }\n' "$BUILD_GRADLE"
+            sed -i '/getByName("release") {/a\            signingConfig = signingConfigs.getByName("release")' "$BUILD_GRADLE"
+          fi
+
+      - name: Build signed release APK
+        if: env.KEYSTORE_PATH != ''
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: npx tauri android build --apk
+
+      - name: Build unsigned APK
+        if: env.KEYSTORE_PATH == ''
+        run: npx tauri android build --apk
+
+      - name: Locate and rename APK
+        id: apk
+        run: |
+          APK_DIR=$(find src-tauri/gen/android -path "*/outputs/apk/*" -name "*.apk" -printf '%h' | head -1)
+          SOURCE_APK=$(find "$APK_DIR" -name "*.apk" -type f | head -1)
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            LABEL="$GITHUB_REF_NAME"
+          else
+            LABEL="${GITHUB_SHA::7}"
+          fi
+          SUFFIX=""
+          if [ -z "${KEYSTORE_PATH:-}" ]; then
+            SUFFIX="-unsigned"
+          fi
+          DEST="EasyMusic-${LABEL}${SUFFIX}.apk"
+          cp "$SOURCE_APK" "$DEST"
+          echo "apk_path=$(pwd)/$DEST" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasyMusic-APK-${{ github.sha }}
+          path: ${{ steps.apk.outputs.apk_path }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: EasyMusic ${{ github.ref_name }}
+          body: |
+            Android APK for ${{ github.ref_name }}
+
+            Built from commit ${{ github.sha }}
+          draft: true
+          prerelease: false
+          files: ${{ steps.apk.outputs.apk_path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
