@@ -6,6 +6,23 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      draft_release:
+        description: 'Create releases as draft (prevents auto-publish)'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      overwrite_assets:
+        description: 'Overwrite existing release assets with the same name'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 concurrency:
   group: apk-${{ github.ref }}
@@ -145,44 +162,196 @@ jobs:
             echo "::warning::apksigner not found at $APKSIGNER, skipping verification."
           fi
 
-      - name: Locate and rename APK
+      # ── Collect and rename ALL APK artifacts ─────────────────────────────
+      # Gradle may produce per-ABI APKs (arm64, armv7, x86_64, x86) and/or a
+      # universal APK. We collect every *.apk under outputs/apk/ and rename
+      # them with the tag/SHA, ABI, and build type for clear identification.
+      - name: Collect and rename APKs
         id: apk
         run: |
-          APK_DIR=$(find src-tauri/gen/android -path "*/outputs/apk/*" -name "*.apk" -printf '%h' | head -1)
-          SOURCE_APK=$(find "$APK_DIR" -name "*.apk" -type f | head -1)
+          STAGING="$(pwd)/apks-staging"
+          mkdir -p "$STAGING"
+
+          # Determine the release label
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             LABEL="$GITHUB_REF_NAME"
           else
             LABEL="${GITHUB_SHA::7}"
           fi
+
+          # Determine suffix for debug builds
           SUFFIX=""
           if [ -z "${KEYSTORE_PATH:-}" ]; then
             SUFFIX="-debug"
           fi
-          DEST="EasyMusic-${LABEL}${SUFFIX}.apk"
-          cp "$SOURCE_APK" "$DEST"
-          echo "apk_path=$(pwd)/$DEST" >> "$GITHUB_OUTPUT"
 
-      - name: Upload APK artifact
+          # Find and rename every APK produced by the build
+          FOUND_ANY=false
+          COUNT=0
+          while IFS= read -r apk_file; do
+            [ -z "$apk_file" ] && continue
+            FOUND_ANY=true
+            COUNT=$((COUNT + 1))
+            # Extract ABI from path: .../outputs/apk/<abi>/<variant>/app[-<abi>]-<variant>.apk
+            ABI=$(echo "$apk_file" | sed -n 's|.*/outputs/apk/\([^/]*\)/.*|\1|p')
+            [ -z "$ABI" ] && ABI="unknown"
+            DEST="EasyMusic-${LABEL}-${ABI}${SUFFIX}.apk"
+            cp "$apk_file" "$STAGING/$DEST"
+            SIZE=$(du -h "$STAGING/$DEST" | cut -f1)
+            echo "  ✓ Collected [$COUNT]: $DEST ($SIZE)"
+          done < <(find src-tauri/gen/android -path "*/outputs/apk/*" -name "*.apk" -type f | sort)
+
+          # ── FAIL LOUDLY if no APK was produced ──────────────────────────
+          if [ "$FOUND_ANY" = false ]; then
+            echo "::error::No APK files found under src-tauri/gen/android/**/outputs/apk/ — the build did not produce any APK."
+            echo "::error::Dumping the outputs directory tree for diagnostics:"
+            find src-tauri/gen/android -path "*/outputs/*" -type f 2>/dev/null | head -30 || echo "(nothing found)"
+            exit 1
+          fi
+
+          echo ""
+          echo "=== Collected $COUNT APK file(s) ==="
+          ls -lh "$STAGING"
+
+          echo "apk_dir=$STAGING" >> "$GITHUB_OUTPUT"
+          echo "apk_count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "label=$LABEL" >> "$GITHUB_OUTPUT"
+
+      # ── Upload APKs as workflow artifacts (all triggers) ────────────────
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: EasyMusic-APK-${{ github.sha }}
-          path: ${{ steps.apk.outputs.apk_path }}
+          path: ${{ steps.apk.outputs.apk_dir }}/*.apk
           retention-days: 30
           if-no-files-found: error
 
-      - name: Publish to GitHub Release
+      # ── Publish to GitHub Release (tag pushes only) ─────────────────────
+      # Creates or updates a GitHub Release with EVERY collected APK attached.
+      # Supports draft releases (default for safety) and protects existing
+      # assets from being overwritten unless explicitly allowed.
+      - name: Publish APKs to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: EasyMusic ${{ github.ref_name }}
-          body: |
-            Android APK for ${{ github.ref_name }}
-
-            Built from commit ${{ github.sha }}
-          draft: true
-          prerelease: false
-          files: ${{ steps.apk.outputs.apk_path }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          APK_DIR="${{ steps.apk.outputs.apk_dir }}"
+          LABEL="${{ steps.apk.outputs.label }}"
+
+          # ── Resolve configuration: draft mode and overwrite policy ──────
+          # Priority: workflow_dispatch input > repository variable > default.
+          # Defaults: draft=true (safe — human publishes), overwrite=false.
+
+          if [ -n "${{ github.event.inputs.draft_release }}" ]; then
+            DRAFT="${{ github.event.inputs.draft_release }}"
+          elif [ -n "${{ vars.APK_RELEASE_DRAFT }}" ]; then
+            DRAFT="${{ vars.APK_RELEASE_DRAFT }}"
+          else
+            DRAFT="true"
+          fi
+
+          if [ -n "${{ github.event.inputs.overwrite_assets }}" ]; then
+            OVERWRITE="${{ github.event.inputs.overwrite_assets }}"
+          elif [ -n "${{ vars.OVERWRITE_RELEASE_ASSETS }}" ]; then
+            OVERWRITE="${{ vars.OVERWRITE_RELEASE_ASSETS }}"
+          else
+            OVERWRITE="false"
+          fi
+
+          echo "Config: draft=$DRAFT  overwrite=$OVERWRITE"
+          echo ""
+
+          # ── Check for existing release ──────────────────────────────────
+          RELEASE_EXISTS=false
+          if gh release view "$TAG" --json url --jq '.url' >/dev/null 2>&1; then
+            RELEASE_EXISTS=true
+            echo "Release '$TAG' already exists."
+          else
+            echo "Release '$TAG' does not exist yet."
+          fi
+
+          # ── Check for asset conflicts (fail-loud overwrite protection) ──
+          if [ "$RELEASE_EXISTS" = true ] && [ "$OVERWRITE" != "true" ]; then
+            EXISTING_ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null || true)
+            CONFLICTS=0
+            echo "Checking for asset name conflicts..."
+            for apk in "$APK_DIR"/*.apk; do
+              ASSET_NAME=$(basename "$apk")
+              if echo "$EXISTING_ASSETS" | grep -qx "$ASSET_NAME"; then
+                echo "::error::Release asset '$ASSET_NAME' already exists in release '$TAG'."
+                echo "::error::To overwrite, set repository variable OVERWRITE_RELEASE_ASSETS=true or pass overwrite_assets=true."
+                CONFLICTS=$((CONFLICTS + 1))
+              fi
+            done
+            if [ "$CONFLICTS" -gt 0 ]; then
+              echo ""
+              echo "::error::$CONFLICTS asset conflict(s) found. Aborting to prevent overwriting existing release assets."
+              exit 1
+            fi
+            echo "✓ No asset conflicts detected."
+          fi
+
+          # ── Build release notes ─────────────────────────────────────────
+          NOTES_FILE=$(mktemp --suffix=.md)
+          {
+            echo "## EasyMusic ${LABEL} — Android APK"
+            echo ""
+            echo "**Built from commit:** [\`${GITHUB_SHA::7}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})"
+            echo "**Build type:** $(if [ -z "${KEYSTORE_PATH:-}" ]; then echo 'Debug-signed'; else echo 'Release-signed'; fi)"
+            echo ""
+            echo "### Downloads"
+            echo ""
+            echo "Download the APK for your device architecture:"
+            echo ""
+            for apk in "$APK_DIR"/*.apk; do
+              NAME=$(basename "$apk")
+              SIZE=$(du -h "$apk" | cut -f1)
+              echo "- **\`${NAME}\`** (${SIZE})"
+            done
+            echo ""
+            echo "### Installation"
+            echo ""
+            echo "1. Download the APK that matches your device architecture (most modern devices use arm64)."
+            echo "2. Enable \"Install from unknown sources\" in Android Settings → Security."
+            echo "3. Open the downloaded APK file and tap \"Install\"."
+          } > "$NOTES_FILE"
+
+          # ── Create or update release, then upload all APKs ──────────────
+          if [ "$RELEASE_EXISTS" = false ]; then
+            CREATE_ARGS=()
+            if [ "$DRAFT" = "true" ]; then
+              CREATE_ARGS+=(--draft)
+            fi
+            echo "Creating release '$TAG' (draft=$DRAFT)..."
+            gh release create "$TAG" \
+              --title "EasyMusic ${LABEL}" \
+              --notes-file "$NOTES_FILE" \
+              "${CREATE_ARGS[@]}"
+          else
+            # Update release metadata (but don't change draft status of a
+            # release that's already published, unless the config says draft)
+            echo "Updating release notes for '$TAG'..."
+            gh release edit "$TAG" \
+              --notes-file "$NOTES_FILE" || true
+          fi
+
+          # Upload all APK files (with or without clobber based on overwrite)
+          UPLOAD_ARGS=()
+          if [ "$OVERWRITE" = "true" ]; then
+            UPLOAD_ARGS+=(--clobber)
+          fi
+
+          echo ""
+          echo "Uploading APK files to release '$TAG'..."
+          # shellcheck disable=SC2086
+          gh release upload "$TAG" "$APK_DIR"/*.apk "${UPLOAD_ARGS[@]}"
+
+          echo ""
+          echo "=== ✓ Release publish complete ==="
+          echo "Tag:     $TAG"
+          echo "Draft:   $DRAFT"
+          echo "Assets uploaded: $(ls -1 "$APK_DIR"/*.apk | wc -l) file(s)"
+          gh release view "$TAG" --json url --jq '.url'
+
+          rm -f "$NOTES_FILE"
