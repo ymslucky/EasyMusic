@@ -75,6 +75,10 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      # ── Decode signing keystore (only when secrets are configured) ────────
+      # When SIGNING_KEY is absent, we fall back to a debug build below.
+      # An unsigned release APK cannot be installed on any Android device
+      # (package installer returns "PackageInfo is null").
       - name: Decode signing keystore
         if: env.HAS_SIGNING_KEY == 'true'
         env:
@@ -100,6 +104,8 @@ jobs:
             sed -i '/getByName("release") {/a\            signingConfig = signingConfigs.getByName("release")' "$BUILD_GRADLE"
           fi
 
+      # ── Build the APK ────────────────────────────────────────────────────
+      # Release-signed path: keystore secrets are configured → proper release APK.
       - name: Build signed release APK
         if: env.KEYSTORE_PATH != ''
         env:
@@ -108,9 +114,36 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: npx tauri android build --apk
 
-      - name: Build unsigned APK
+      # Fallback path: no signing secrets → use --debug so Gradle signs the APK
+      # with its auto-generated debug keystore. This produces a validly-signed
+      # APK that installs on Android. An unsigned release build produces
+      # app-universal-release-unsigned.apk which fails with "PackageInfo is null".
+      - name: Build debug-signed APK (no signing key configured)
         if: env.KEYSTORE_PATH == ''
-        run: npx tauri android build --apk
+        run: npx tauri android build --apk --debug
+
+      # ── Verify the APK is signed before shipping ─────────────────────────
+      # Catches regressions where the build silently produces an unsigned APK.
+      - name: Verify APK is signed
+        run: |
+          APK_DIR=$(find src-tauri/gen/android -path "*/outputs/apk/*" -name "*.apk" -printf '%h' | head -1)
+          SOURCE_APK=$(find "$APK_DIR" -name "*.apk" -type f | head -1)
+          echo "Checking APK: $SOURCE_APK"
+          # List the APK's signing-related entries; a signed APK has either
+          # META-INF/*.RSA/.DSA/.EC (v1) or an APK Signature Scheme v2/v3 block
+          # (not visible in the zip listing, so we also check with apksigner).
+          unzip -l "$SOURCE_APK" | grep -i "META-INF/.*\.\(RSA\|DSA\|EC\)" || echo "No v1 signature files found (v2/v3 only)"
+          # Verify with apksigner — always present alongside build-tools
+          APKSIGNER="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          if [ -x "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --verbose "$SOURCE_APK" || {
+              echo "::error::APK signature verification FAILED — the APK is unsigned and cannot be installed on Android."
+              exit 1
+            }
+            echo "✓ APK signature verified successfully."
+          else
+            echo "::warning::apksigner not found at $APKSIGNER, skipping verification."
+          fi
 
       - name: Locate and rename APK
         id: apk
@@ -124,7 +157,7 @@ jobs:
           fi
           SUFFIX=""
           if [ -z "${KEYSTORE_PATH:-}" ]; then
-            SUFFIX="-unsigned"
+            SUFFIX="-debug"
           fi
           DEST="EasyMusic-${LABEL}${SUFFIX}.apk"
           cp "$SOURCE_APK" "$DEST"
